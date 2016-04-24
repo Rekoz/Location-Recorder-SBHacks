@@ -5,6 +5,7 @@
  */
 
 var UI = require('ui');
+var ajax = require('ajax');
 var Vector2 = require('vector2');
 var Accel = require('ui/accel');
 var options = {
@@ -12,8 +13,6 @@ var options = {
   timeout: 5000,
   maximumAge: 0
 };
-
-var flag = false;
 
 var cur = localStorage.getItem('cur');
 function success(pos) {
@@ -42,36 +41,8 @@ var main = new UI.Card({
 
 main.show();
 
-// Accel.on('tap', function(e) {
-//   console.log('Tap event on axis: ' + e.axis + ' and direction: ' + e.direction);
-// });
-
-// main.on('click', 'up', function(e) {
-  
-//   var menu = new UI.Menu({
-//     sections: [{
-//       items: [{
-//         title: 'Pebble.js',
-//         icon: 'images/menu_icon.png',
-//         subtitle: 'Can do Menus'
-//       }, {
-//         title: 'Second Item',
-//         subtitle: 'Subtitle Text'
-//       }]
-//     }]
-//   });
-//   menu.on('select', function(e) {
-//     console.log('Selected item #' + e.itemIndex + ' of section #' + e.sectionIndex);
-//     console.log('The item is titled "' + e.item.title + '"');
-//   });
-//   menu.show();
-// });
-
 main.on('click', 'select', function(e) {
   navigator.geolocation.getCurrentPosition(success, error, options);
-  var card = new UI.Card();
-  card.title('Current Location Recorded');
-  card.show();
 });
 
 main.on('click', 'down', function(e) {
@@ -79,6 +50,7 @@ main.on('click', 'down', function(e) {
   var idx = cur;
   for (var i = 0; i < 3; i++) {
     if (idx < 0) idx += 3;
+    console.log(idx);
     var item = JSON.parse(localStorage.getItem('loc'+idx)); 
     console.log(item);
     var date = new Date(item[2]);
@@ -98,17 +70,41 @@ main.on('click', 'down', function(e) {
     var id = (idx+3-e.itemIndex) % 3;
     var content = JSON.parse(localStorage.getItem('loc'+id));
     var detailCard = new UI.Card({
-        title: 'Location',
-        body: String(content[0]) + ',\n' + String(content[1])
+        //title: 'Location',
+        //body: String(content[0]) + ',\n' + String(content[1])
+        title: 'Instruction',
+        subtitle: '374 ft, 1 min',
+        body: 'Turn toward Arliss st'
       });
     detailCard.show();
+    var curLoc;
+    navigator.geolocation.getCurrentPosition(function(pos){
+      curLoc = pos.coords.latitude + ',' + pos.coords.longitutde;
+    }, error, options);
+    var googleDirectionsURL = 'https://maps.googleapis.com/maps/api/directions/json?origin=' + curLoc + '&destination=' + content[0] + ',' + content[1] + 'Montreal&key=AIzaSyCDcSqU7Jpa737K7Ioa93bFF9lWpvsPPXw';
+    var directions = null;
+    ajax({
+        url: googleDirectionsURL,
+        type: 'json',
+        success: function(data) {
+          directions = data;
+          console.log(directions.status);
+        },
+        error: error,
+        async: false
+      });
+    console.log(directions.routes);
+    var steps = directions.routes[0].legs[0].steps;
+    var stepi = 0;
+    detailCard.body('distance'+steps[0].distance.text+'\n'+steps[0].html_instructions);
+   // detailCard.show();
+    function updateLoc() {
+      var curLocX, curLocY;
+      navigator.geolocation.getCurrentPosition(function(pos){
+        curLocX = pos.coords.latitude;
+        curLocY = pos.coords.longtitude;
+      }, error, options);
+    }
   });
   resultsMenu.show();
-  
-//   var card = new UI.Card();
-//   navigator.geolocation.getCurrentPosition(success, error, options);
-//   card.title('Location Recorded');
-//   card.subtitle('Latitude : ' + lat+ ' Longitude: '+ long);
-//   card.body();
-//   card.show();
 });
